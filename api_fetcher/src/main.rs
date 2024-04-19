@@ -2,7 +2,6 @@ use chrono::{DateTime, Local};
 use reqwest::blocking::get;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
 
@@ -21,17 +20,6 @@ fn main() {
         )
         .expect("error with the API call")
     );
-}
-
-#[derive(Debug, Clone)]
-struct ApiGetError {
-    msg: String,
-}
-
-impl fmt::Display for ApiGetError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", format!("could not fetch API data: {}", self.msg))
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
