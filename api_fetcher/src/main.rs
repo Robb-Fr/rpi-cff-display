@@ -128,21 +128,11 @@ impl StationBoardResponse {
 
         let url = Url::parse_with_params(STATIONBOARD_ENDPOINT, args)
             .or(Err(String::from("url parameters should be parsable")))?;
-        println!("{:?}", url.to_string());
+
         get(url)
-            .or_else(|e| {
-                Err(String::from(format!(
-                    "could not perform get request: {}",
-                    e
-                )))
-            })?
+            .or_else(|e| Err(format!("could not perform get request: {}", e)))?
             .json::<StationBoardResponse>()
-            .or_else(|e| {
-                Err(String::from(format!(
-                    "could not parse json received: {}",
-                    e
-                )))
-            })
+            .or_else(|e| Err(format!("could not parse json received: {}", e)))
     }
 }
 
@@ -440,5 +430,18 @@ mod tests {
             prognosis()
         );
         assert_eq!(s.stationboard[0].clone().stop, stop());
+    }
+
+    #[test]
+    fn test_api_call_all_params() {
+        StationBoardResponse::get(
+            Some("Genève, Cornavin"),
+            Some("8587057"),
+            Some(3),
+            Some(vec!["metro", "tram"]),
+            Some(chrono::Local::now()),
+            Some("arrival"),
+        )
+        .expect("error with the API call");
     }
 }
