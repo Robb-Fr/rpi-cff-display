@@ -1,8 +1,37 @@
 use chrono::{DateTime, Local};
+use reqwest::blocking::get;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
 
 fn main() {
     println!("Hello, world!");
+
+    println!(
+        "{:?}",
+        StationBoardResponse::get(
+            Some("Genève, Cornavin"),
+            Some("8587057"),
+            Some(3),
+            Some(vec!["metro", "tram"]),
+            Some(chrono::Local::now()),
+            Some("arrival")
+        )
+        .expect("error with the API call")
+    );
+}
+
+#[derive(Debug, Clone)]
+struct ApiGetError {
+    msg: String,
+}
+
+impl fmt::Display for ApiGetError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("could not fetch API data: {}", self.msg))
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -65,6 +94,68 @@ struct StationBoardElement {
 struct StationBoardResponse {
     station: Location,
     stationboard: Vec<StationBoardElement>,
+}
+
+impl StationBoardResponse {
+    fn get(
+        station: Option<&str>,
+        id: Option<&str>,
+        limit: Option<u32>,
+        transportations: Option<Vec<&str>>,
+        datetime: Option<DateTime<Local>>,
+        r#type: Option<&str>,
+    ) -> Result<Self, String> {
+        if station == None && id == None {
+            return Err(String::from("must provide either a station or an id"));
+        }
+        let mut args: Vec<(&str, String)> = vec![];
+        match station {
+            Some(s) => args.push(("station", s.to_owned())),
+            _ => (),
+        }
+        match id {
+            Some(s) => args.push(("id", s.to_owned())),
+            _ => (),
+        }
+        match r#type {
+            Some(s) => args.push(("type", s.to_owned())),
+            _ => (),
+        }
+        match limit {
+            Some(l) => args.push(("limit", l.to_string())),
+            _ => (),
+        }
+        match transportations {
+            Some(t) => {
+                for e in t {
+                    args.push(("transportations", e.to_owned()))
+                }
+            }
+            _ => (),
+        }
+        match datetime {
+            Some(d) => args.push(("datetime", format!("{}", d.format("%Y-%m-%d %H:%M")))),
+            _ => (),
+        }
+
+        let url = Url::parse_with_params(STATIONBOARD_ENDPOINT, args)
+            .or(Err(String::from("url parameters should be parsable")))?;
+        println!("{:?}", url.to_string());
+        get(url)
+            .or_else(|e| {
+                Err(String::from(format!(
+                    "could not perform get request: {}",
+                    e
+                )))
+            })?
+            .json::<StationBoardResponse>()
+            .or_else(|e| {
+                Err(String::from(format!(
+                    "could not parse json received: {}",
+                    e
+                )))
+            })
+    }
 }
 
 #[cfg(test)]
