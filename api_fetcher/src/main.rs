@@ -9,13 +9,11 @@ use std::path::Path;
 use std::{cmp::min, fmt};
 
 const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
-const JOURNEYS_LIMIT: u32 = 4;
-const MAX_DISPLAYED_LINES: usize = 4;
+const JOURNEYS_LIMIT: u32 = 6;
+const MAX_DISPLAYED_LINES: usize = 6;
 const RESULT_FILE_NAME: &str = "api_result.tsv";
 
 fn main() {
-    println!("Hello, world!");
-
     dotenv().ok();
     let station_id = std::env::var("STATION_ID").expect("STATION_ID must be set.");
     let station_board = StationBoardResponse::get(
@@ -27,7 +25,7 @@ fn main() {
         None,
     )
     .expect("error with the API call");
-    println!("{:#?}", station_board);
+    // println!("{:#?}", station_board);
 
     let nb_stations = min(station_board.stationboard.len(), MAX_DISPLAYED_LINES);
     let mut lines_info: Vec<LineInfo> = Vec::with_capacity(nb_stations);
