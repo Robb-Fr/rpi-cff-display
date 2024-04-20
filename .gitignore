@@ -176,3 +176,6 @@ Cargo.lock
 
 # macOS files
 .DS_Store
+
+# Results reveal location
+api_result.tsv

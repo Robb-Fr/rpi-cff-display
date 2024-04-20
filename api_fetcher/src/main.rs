@@ -3,27 +3,66 @@ use dotenv::dotenv;
 use reqwest::blocking::get;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::{cmp::min, fmt};
 
 const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
 const JOURNEYS_LIMIT: u32 = 4;
+const MAX_DISPLAYED_LINES: usize = 4;
+const RESULT_FILE_NAME: &str = "api_result.tsv";
 
 fn main() {
     println!("Hello, world!");
 
     dotenv().ok();
     let station_id = std::env::var("STATION_ID").expect("STATION_ID must be set.");
-    println!(
-        "{:?}",
-        StationBoardResponse::get(
-            None,
-            Some(&station_id),
-            Some(JOURNEYS_LIMIT),
-            None,
-            None,
-            None
-        )
-        .expect("error with the API call")
-    );
+    let station_board = StationBoardResponse::get(
+        None,
+        Some(&station_id),
+        Some(JOURNEYS_LIMIT),
+        None,
+        None,
+        None,
+    )
+    .expect("error with the API call");
+    println!("{:#?}", station_board);
+
+    let nb_stations = min(station_board.stationboard.len(), MAX_DISPLAYED_LINES);
+    let mut lines_info: Vec<LineInfo> = Vec::with_capacity(nb_stations);
+    for i in 0..nb_stations {
+        let s = &station_board.stationboard[i].stop;
+        let j = &station_board.stationboard[i].journey;
+        lines_info.push(LineInfo {
+            line_number: j.number.to_owned(),
+            direction: j.to.to_owned(),
+            normal_departure: s.departure.expect("departure time should be present"),
+            delay: s.delay.unwrap_or_default(),
+        })
+    }
+
+    let mut to_write = String::from("");
+    for l in lines_info {
+        println!("{}", l);
+        to_write += &l.to_string();
+        to_write.push('\n');
+    }
+
+    let path = Path::new(RESULT_FILE_NAME);
+    let display = path.display();
+
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    // Write the `to_write` string to `file`, returns `io::Result<()>`
+    match file.write_all(to_write.as_bytes()) {
+        Err(why) => panic!("couldn't write to {}: {}", display, why),
+        Ok(_) => println!("successfully wrote to {}", display),
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -137,6 +176,24 @@ impl StationBoardResponse {
             .or_else(|e| Err(format!("could not perform get request: {}", e)))?
             .json::<StationBoardResponse>()
             .or_else(|e| Err(format!("could not parse json received: {}", e)))
+    }
+}
+
+#[derive(Debug)]
+struct LineInfo {
+    line_number: String,
+    direction: String,
+    normal_departure: DateTime<Local>,
+    delay: i32,
+}
+
+impl fmt::Display for LineInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}\t{}\t{}\t{}",
+            self.line_number, self.direction, self.normal_departure, self.delay
+        )
     }
 }
 
@@ -458,7 +515,7 @@ mod tests {
             "Bern, Bahnhof",
         ] {
             StationBoardResponse::get(Some(s), None, None, None, None, None)
-                .expect("error with the API call");
+                .expect(&format!("error with the API call for station {}", s));
         }
     }
 }
