@@ -1,22 +1,26 @@
 use chrono::{DateTime, Local};
+use dotenv::dotenv;
 use reqwest::blocking::get;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
+const JOURNEYS_LIMIT: u32 = 4;
 
 fn main() {
     println!("Hello, world!");
 
+    dotenv().ok();
+    let station_id = std::env::var("STATION_ID").expect("STATION_ID must be set.");
     println!(
         "{:?}",
         StationBoardResponse::get(
-            Some("Genève, Cornavin"),
-            Some("8587057"),
-            Some(3),
-            Some(vec!["metro", "tram"]),
-            Some(chrono::Local::now()),
-            Some("arrival")
+            None,
+            Some(&station_id),
+            Some(JOURNEYS_LIMIT),
+            None,
+            None,
+            None
         )
         .expect("error with the API call")
     );
@@ -96,7 +100,7 @@ impl StationBoardResponse {
         if station == None && id == None {
             return Err(String::from("must provide either a station or an id"));
         }
-        let mut args: Vec<(&str, String)> = vec![];
+        let mut args: Vec<(&str, String)> = Vec::with_capacity(6);
         match station {
             Some(s) => args.push(("station", s.to_owned())),
             _ => (),
@@ -443,5 +447,18 @@ mod tests {
             Some("arrival"),
         )
         .expect("error with the API call");
+    }
+
+    #[test]
+    fn test_api_different_stations() {
+        for s in [
+            "Genève, gare Cornavin",
+            "Zürich HB",
+            "Lausanne, gare",
+            "Bern, Bahnhof",
+        ] {
+            StationBoardResponse::get(Some(s), None, None, None, None, None)
+                .expect("error with the API call");
+        }
     }
 }
