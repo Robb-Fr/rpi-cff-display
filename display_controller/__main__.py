@@ -1,121 +1,92 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding:utf-8 -*-
 import os
 import logging
 from . import picdir
 from waveshare_epd import epd4in2
-import time
 from PIL import Image, ImageDraw, ImageFont
 
 logging.basicConfig(level=logging.DEBUG)
 
+MAX_DISPLAYED_LINES = 5
+RESULT_FILENAME = "api_result.tsv"
+MAX_NB_COLS = 4
+
+result_filepath = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+    "api_fetcher",
+    RESULT_FILENAME,
+)
+if not os.path.isfile(result_filepath):
+    logging.error(f"could not find the file {result_filepath}")
+    exit(1)
+
+# Open the file and read its content.
+with open(result_filepath) as f:
+    content = f.read().splitlines()
+
+to_display = []
+for line in content[:MAX_DISPLAYED_LINES]:
+    cols = line.split("\t")
+    logging.info(cols)
+    if len(cols) != MAX_NB_COLS:
+        logging.error(f"the file contains {len(cols)} instead of {MAX_NB_COLS}")
+        exit(1)
+    line_direction = cols[1]
+    if len(line_direction) > 8:
+        line_direction = cols[1][:4] + ".." + cols[1][-3:]
+    to_append = (
+        cols[0]
+        + " "
+        + line_direction
+        + " "
+        + cols[2]
+        + ("" if cols[3] == "0" else "+" + cols[3])
+    )
+    logging.info(f"appending {to_append}")
+    to_display.append(to_append)
+
+
 try:
-    logging.info("epd4in2 Demo")
+    logging.info("Starting to display the next departures")
 
     epd = epd4in2.EPD()
     logging.info("init and Clear")
     epd.init()
     epd.Clear()
 
-    font24 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 24)
-    font18 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 18)
-    font35 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 35)
-    font46 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 46)
-    font64 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 64)
+    font24 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 24)
+    font18 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 18)
+    font30 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 30)
 
-    # Drawing on the Horizontal image
-    logging.info("1.Drawing on the Horizontal image...")
-    Himage = Image.new("1", (epd.width, epd.height), 255)  # 255: clear the frame
-    draw = ImageDraw.Draw(Himage)
-    draw.text((10, 30), "Coucou", font=font46, fill=0)
-    # draw.text((10, 20), "4.2inch e-Paper", font=font24, fill=0)
-    # draw.text((150, 0), "微雪电子", font=font24, fill=0)
-    # draw.line((20, 50, 70, 100), fill=0)
-    # draw.line((70, 50, 20, 100), fill=0)
-    # draw.rectangle((20, 50, 70, 100), outline=0)
-    # draw.line((165, 50, 165, 100), fill=0)
-    # draw.line((140, 75, 190, 75), fill=0)
-    # draw.arc((140, 50, 190, 100), 0, 360, fill=0)
-    # draw.rectangle((80, 50, 130, 100), fill=0)
-    # draw.chord((200, 50, 250, 100), 0, 360, fill=0)
-    epd.display(epd.getbuffer(Himage))
-    time.sleep(4)
+    # Drawing the next transport departures
+    logging.info("Drawing the next transport departures...")
+    Bimage = Image.new("1", (epd.width, epd.height), 255)  # 255: clear the frame
+    draw = ImageDraw.Draw(Bimage)
+    LINE_HEIGHT = 2
+    PADDING_WITH_LINE = 15
+    FONT_SIZE = 30
+    for i, s in enumerate(to_display):
+        draw.text(
+            (0, i * (FONT_SIZE + LINE_HEIGHT + PADDING_WITH_LINE * 2)),
+            s,
+            font=font30,
+            fill=0,
+        )
+        draw.rectangle(
+            (
+                20,
+                (FONT_SIZE + PADDING_WITH_LINE)
+                + i * (LINE_HEIGHT + PADDING_WITH_LINE * 2 + FONT_SIZE),
+                400 - 20,
+                (FONT_SIZE + PADDING_WITH_LINE + LINE_HEIGHT)
+                + i * (LINE_HEIGHT + PADDING_WITH_LINE * 2 + FONT_SIZE),
+            ),
+            fill=0,
+        )
+    epd.display(epd.getbuffer(Bimage))
 
-    # # Drawing on the Vertical image
-    # logging.info("2.Drawing on the Vertical image...")
-    # Limage = Image.new("1", (epd.height, epd.width), 255)  # 255: clear the frame
-    # draw = ImageDraw.Draw(Limage)
-    # draw.text((2, 0), "hello world", font=font18, fill=0)
-    # draw.text((2, 20), "4.2inch epd", font=font18, fill=0)
-    # draw.text((20, 50), "微雪电子", font=font18, fill=0)
-    # draw.line((10, 90, 60, 140), fill=0)
-    # draw.line((60, 90, 10, 140), fill=0)
-    # draw.rectangle((10, 90, 60, 140), outline=0)
-    # draw.line((95, 90, 95, 140), fill=0)
-    # draw.line((70, 115, 120, 115), fill=0)
-    # draw.arc((70, 90, 120, 140), 0, 360, fill=0)
-    # draw.rectangle((10, 150, 60, 200), fill=0)
-    # draw.chord((70, 150, 120, 200), 0, 360, fill=0)
-    # epd.display(epd.getbuffer(Limage))
-    # time.sleep(2)
-
-    logging.info("3.read bmp file")
-    Himage = Image.open(os.path.join(picdir, "4in2_Scale_2.bmp"))
-    epd.display(epd.getbuffer(Himage))
-    time.sleep(2)
-
-    # logging.info("4.read bmp file on window")
-    # Himage2 = Image.new("1", (epd.height, epd.width), 255)  # 255: clear the frame
-    # bmp = Image.open(os.path.join(picdir, "100x100.bmp"))
-    # Himage2.paste(bmp, (50, 10))
-    # epd.display(epd.getbuffer(Himage2))
-    # time.sleep(2)
-
-    # logging.info("Clear...")
     # epd.Clear()
-
-    # if 0:
-    #     print(
-    #         "Support for partial refresh, but the refresh effect is not good, but it is not recommended"
-    #     )
-    #     print("Local refresh is off by default and is not recommended.")
-    #     Himage3 = Image.new("1", (epd.width, epd.height), 0)  # 255: clear the frame
-    #     draw = ImageDraw.Draw(Himage3)
-    #     epd.init_Partial()
-    #     for j in range(0, int(20)):
-    #         draw.rectangle((8, 80, 48, 155), fill=255)
-    #         draw.text((8, 80), str(j), font=font35, fill=0)
-    #         draw.text((8, 120), str(20 - j), font=font35, fill=0)
-    #         epd.EPD_4IN2_PartialDisplay(8, 80, 42, 155, epd.getbuffer(Himage3))
-    #         time.sleep(2)
-
-    # """4Gray display"""
-    # logging.info("5.4Gray display--------------------------------")
-    # epd.Init_4Gray()
-
-    # Limage = Image.new("L", (epd.width, epd.height), 0)  # 255: clear the frame
-    # draw = ImageDraw.Draw(Limage)
-    # draw.text((20, 0), "微雪电子", font=font35, fill=epd.GRAY1)
-    # draw.text((20, 35), "微雪电子", font=font35, fill=epd.GRAY2)
-    # draw.text((20, 70), "微雪电子", font=font35, fill=epd.GRAY3)
-    # draw.text((40, 110), "hello world", font=font18, fill=epd.GRAY1)
-    # draw.line((10, 140, 60, 190), fill=epd.GRAY1)
-    # draw.line((60, 140, 10, 190), fill=epd.GRAY1)
-    # draw.rectangle((10, 140, 60, 190), outline=epd.GRAY1)
-    # draw.line((95, 140, 95, 190), fill=epd.GRAY1)
-    # draw.line((70, 165, 120, 165), fill=epd.GRAY1)
-    # draw.arc((70, 140, 120, 190), 0, 360, fill=epd.GRAY1)
-    # draw.rectangle((10, 200, 60, 250), fill=epd.GRAY1)
-    # draw.chord((70, 200, 120, 250), 0, 360, fill=epd.GRAY1)
-    # epd.display_4Gray(epd.getbuffer_4Gray(Limage))
-    # time.sleep(3)
-
-    # # display 4Gra bmp
-    # Himage = Image.open(os.path.join(picdir, "4in2_Scale_1.bmp"))
-    # epd.display_4Gray(epd.getbuffer_4Gray(Himage))
-    # time.sleep(4)
-
-    epd.Clear()
     logging.info("Goto Sleep...")
     epd.sleep()
 
@@ -124,5 +95,5 @@ except IOError as e:
 
 except KeyboardInterrupt:
     logging.info("ctrl + c:")
-    epd4in2.epdconfig.module_exit(cleanup=True) # type: ignore
+    epd4in2.epdconfig.module_exit(cleanup=True)  # type: ignore
     exit()
