@@ -9,8 +9,8 @@ use std::path::Path;
 use std::{cmp::min, fmt};
 
 const STATIONBOARD_ENDPOINT: &str = "https://transport.opendata.ch/v1/stationboard";
-const JOURNEYS_LIMIT: u32 = 6;
-const MAX_DISPLAYED_LINES: usize = 6;
+const JOURNEYS_LIMIT: u32 = 5;
+const MAX_DISPLAYED_LINES: usize = 5;
 const RESULT_FILE_NAME: &str = "api_result.tsv";
 
 fn main() {
@@ -35,7 +35,12 @@ fn main() {
         lines_info.push(LineInfo {
             line_number: j.number.to_owned(),
             direction: j.to.to_owned(),
-            normal_departure: s.departure.expect("departure time should be present"),
+            normal_departure: format!(
+                "{}",
+                s.departure
+                    .expect("departure time should be present")
+                    .format("%H:%M")
+            ),
             delay: s.delay.unwrap_or_default(),
         })
     }
@@ -181,7 +186,7 @@ impl StationBoardResponse {
 struct LineInfo {
     line_number: String,
     direction: String,
-    normal_departure: DateTime<Local>,
+    normal_departure: String,
     delay: i32,
 }
 
