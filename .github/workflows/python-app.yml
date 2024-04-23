@@ -32,4 +32,4 @@ jobs:
         cd display_controller && ruff check *.py lib/*.py -v
     - name: Test with unittest
       run: |
-        cd display_controller && python3 -m unittest
+        cd display_controller && python3 -m unittest --verbose
