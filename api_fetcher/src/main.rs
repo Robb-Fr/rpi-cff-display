@@ -15,7 +15,7 @@ const RESULT_FILE_NAME: &str = "api_result.tsv";
 
 fn main() {
     dotenv().ok();
-    let station_id = std::env::var("STATION_ID").expect("STATION_ID must be set.");
+    let station_id = std::env::var("STATION_ID").expect("STATION_ID must be set in .env file.");
     let station_board = StationBoardResponse::get(
         None,
         Some(&station_id),
