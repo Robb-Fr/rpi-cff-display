@@ -34,7 +34,7 @@ for line in content[:MAX_DISPLAYED_LINES]:
         exit(1)
     line_direction = cols[1]
     if len(line_direction) > 8:
-        line_direction = cols[1][:4] + ".." + cols[1][-3:]
+        line_direction = cols[1][:3] + ".." + cols[1][-3:]
     to_append = (
         cols[0]
         + " "
@@ -55,22 +55,20 @@ try:
     epd.init()
     epd.Clear()
 
-    font24 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 24)
-    font18 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 18)
-    font30 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 30)
+    font31 = ImageFont.truetype(os.path.join(picdir, "Menlo.ttc"), 31)
 
     # Drawing the next transport departures
     logging.info("Drawing the next transport departures...")
     Bimage = Image.new("1", (epd.width, epd.height), 255)  # 255: clear the frame
     draw = ImageDraw.Draw(Bimage)
     LINE_HEIGHT = 2
-    PADDING_WITH_LINE = 15
-    FONT_SIZE = 30
+    PADDING_WITH_LINE = 16
+    FONT_SIZE = 31
     for i, s in enumerate(to_display):
         draw.text(
             (0, i * (FONT_SIZE + LINE_HEIGHT + PADDING_WITH_LINE * 2)),
             s,
-            font=font30,
+            font=font31,
             fill=0,
         )
         draw.rectangle(
@@ -86,7 +84,6 @@ try:
         )
     epd.display(epd.getbuffer(Bimage))
 
-    # epd.Clear()
     logging.info("Goto Sleep...")
     epd.sleep()
 
