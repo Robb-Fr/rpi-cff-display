@@ -2,9 +2,6 @@ import unittest
 import os
 from lib import create_to_display_image, parse_api_result, font
 from PIL import Image, ImageChops
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 TEST_RESULT_FILENAME = "api_result_test.tsv"
 TEST_IMAGE_FILENAME = "test_display.bmp"
@@ -35,16 +32,12 @@ class TestDisplayController(unittest.TestCase):
 
     def test_generate_image(self):
         to_display = parse_api_result(test_result_filepath)
-        logging.debug(to_display)
 
         test_image = create_to_display_image(
             to_display, IMAGE_WIDTH, IMAGE_HEIGHT, font
         )
 
         with Image.open(test_image_filepath) as expected_image:
-            for i, (b_t, b_e) in enumerate(zip(test_image.tobytes(), expected_image.tobytes())):
-                if b_t != b_e:
-                    print(f"diff on pixel {i}: {b_t} != {b_e}")
             diff = ImageChops.difference(test_image, expected_image)
             self.assertIsNone(diff.getbbox())
 
