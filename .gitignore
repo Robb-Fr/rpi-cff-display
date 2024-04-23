@@ -14,7 +14,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Allows lib upload for using waveshare's library
+lib/*
+!lib/waveshare_epd
+!sysfs_gpio.so
+!sysfs_software_spi.so
 lib64/
 parts/
 sdist/
