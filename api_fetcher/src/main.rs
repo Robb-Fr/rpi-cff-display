@@ -33,7 +33,10 @@ fn main() {
         let s = &station_board.stationboard[i].stop;
         let j = &station_board.stationboard[i].journey;
         lines_info.push(LineInfo {
-            line_number: j.number.to_owned(),
+            line_number: j
+                .number
+                .to_owned()
+                .expect("expect line number to be available"),
             direction: j.to.to_owned(),
             normal_departure: format!(
                 "{}",
@@ -77,7 +80,7 @@ struct Coordinate {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 struct Location {
-    id: String,
+    id: Option<String>,
     name: Option<String>,
     score: Option<f32>,
     coordinate: Coordinate,
@@ -106,10 +109,10 @@ struct Stop {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Journey {
-    name: String,
+    name: Option<String>,
     category: String,
     category_code: Option<String>,
-    number: String,
+    number: Option<String>,
     operator: String,
     to: String,
     capacity1st: Option<u32>,
@@ -208,7 +211,7 @@ mod tests {
 
     const TIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
-    fn coordinate() -> Coordinate {
+    fn coordinate_geneva() -> Coordinate {
         Coordinate {
             r#type: String::from("WGS84"),
             x: Some(46.209751),
@@ -216,17 +219,35 @@ mod tests {
         }
     }
 
-    fn location() -> Location {
+    fn coordinate_zurich() -> Coordinate {
+        Coordinate {
+            r#type: String::from("WGS84"),
+            x: Some(47.377847),
+            y: Some(8.540502),
+        }
+    }
+
+    fn location_geneva() -> Location {
         Location {
-            id: String::from("8587057"),
+            id: Some(String::from("8587057")),
             name: Some(String::from("Gen\u{00e8}ve, gare Cornavin")),
             score: None,
-            coordinate: coordinate(),
+            coordinate: coordinate_geneva(),
             distance: None,
         }
     }
 
-    fn prognosis() -> Prognosis {
+    fn location_zurich() -> Location {
+        Location {
+            id: Some(String::from("8503000")),
+            name: Some(String::from("Z\u{00fc}rich HB")),
+            score: None,
+            coordinate: coordinate_zurich(),
+            distance: None,
+        }
+    }
+
+    fn prognosis_geneva() -> Prognosis {
         Prognosis {
             platform: None,
             arrival: Some(
@@ -244,9 +265,23 @@ mod tests {
         }
     }
 
-    fn stop() -> Stop {
+    fn prognosis_zurich() -> Prognosis {
+        Prognosis {
+            platform: None,
+            arrival: None,
+            departure: Some(
+                DateTime::parse_from_str("2024-04-23T11:38:00+0200", TIME_FORMAT)
+                    .unwrap()
+                    .with_timezone(&Local),
+            ),
+            capacity1st: None,
+            capacity2nd: None,
+        }
+    }
+
+    fn stop_geneva() -> Stop {
         Stop {
-            station: location(),
+            station: location_geneva(),
             arrival: None,
             departure: Some(
                 DateTime::parse_from_str("2024-04-19T12:09:00+0200", TIME_FORMAT)
@@ -255,13 +290,28 @@ mod tests {
             ),
             delay: Some(3),
             platform: Some(String::from("F")),
-            prognosis: Some(prognosis()),
+            prognosis: Some(prognosis_geneva()),
+        }
+    }
+
+    fn stop_zurich() -> Stop {
+        Stop {
+            station: location_zurich(),
+            arrival: None,
+            departure: Some(
+                DateTime::parse_from_str("2024-04-23T11:38:00+0200", TIME_FORMAT)
+                    .unwrap()
+                    .with_timezone(&Local),
+            ),
+            delay: Some(0),
+            platform: Some(String::from("8")),
+            prognosis: Some(prognosis_zurich()),
         }
     }
 
     #[test]
     fn parse_coordinates() {
-        let expected = coordinate();
+        let expected = coordinate_geneva();
         let test_data = r#"
          {
             "type": "WGS84",
@@ -270,12 +320,23 @@ mod tests {
         }"#;
 
         let c: Coordinate = serde_json::from_str(test_data).unwrap();
+        assert_eq!(c, expected);
+
+        let expected = coordinate_zurich();
+        let test_data = r#"
+        {
+            "type": "WGS84",
+            "x": 47.377847,
+            "y": 8.540502
+        }"#;
+
+        let c: Coordinate = serde_json::from_str(test_data).unwrap();
         assert_eq!(c, expected)
     }
 
     #[test]
     fn parse_location() {
-        let expected = location();
+        let expected = location_geneva();
         let test_data = r#"{
             "id": "8587057",
             "name": "Gen\u00e8ve, gare Cornavin",
@@ -289,12 +350,28 @@ mod tests {
         }"#;
 
         let l: Location = serde_json::from_str(test_data).unwrap();
+        assert_eq!(l, expected);
+
+        let expected = location_zurich();
+        let test_data = r#"{
+            "id": "8503000",
+            "name": "Z\u00fcrich HB",
+            "score": null,
+            "coordinate": {
+                "type": "WGS84",
+                "x": 47.377847,
+                "y": 8.540502
+            },
+            "distance": null
+        }"#;
+
+        let l: Location = serde_json::from_str(test_data).unwrap();
         assert_eq!(l, expected)
     }
 
     #[test]
     fn parse_prognosis() {
-        let expected = prognosis();
+        let expected = prognosis_geneva();
         let test_data = r#"{
             "platform": null,
             "arrival": "2024-04-19T12:15:32+0200",
@@ -304,11 +381,22 @@ mod tests {
         }"#;
         let p: Prognosis = serde_json::from_str(test_data).unwrap();
         assert_eq!(p, expected);
+
+        let expected = prognosis_zurich();
+        let test_data = r#"{
+            "platform": null,
+            "arrival": null,
+            "departure": "2024-04-23T11:38:00+0200",
+            "capacity1st": null,
+            "capacity2nd": null
+        }"#;
+        let p: Prognosis = serde_json::from_str(test_data).unwrap();
+        assert_eq!(p, expected);
     }
 
     #[test]
     fn parse_stop() {
-        let expected = stop();
+        let expected = stop_geneva();
         let test_data = r#"{
             "station": {
                 "id": "8587057",
@@ -350,22 +438,65 @@ mod tests {
 
         let s: Stop = serde_json::from_str(test_data).unwrap();
         assert_eq!(s, expected);
+
+        let expected = stop_zurich();
+        let test_data = r#"{
+            "station": {
+                "id": "8503000",
+                "name": "Z\u00fcrich HB",
+                "score": null,
+                "coordinate": {
+                    "type": "WGS84",
+                    "x": 47.377847,
+                    "y": 8.540502
+                },
+                "distance": null
+            },
+            "arrival": null,
+            "arrivalTimestamp": null,
+            "departure": "2024-04-23T11:38:00+0200",
+            "departureTimestamp": 1713865080,
+            "delay": 0,
+            "platform": "8",
+            "prognosis": {
+                "platform": null,
+                "arrival": null,
+                "departure": "2024-04-23T11:38:00+0200",
+                "capacity1st": null,
+                "capacity2nd": null
+            },
+            "realtimeAvailability": null,
+            "location": {
+                "id": "8509000",
+                "name": null,
+                "score": null,
+                "coordinate": {
+                    "type": "WGS84",
+                    "x": null,
+                    "y": null
+                },
+                "distance": null
+            }
+        }"#;
+
+        let s: Stop = serde_json::from_str(test_data).unwrap();
+        assert_eq!(s, expected);
     }
 
     #[test]
     fn parse_journey() {
         let expected = Journey {
-            name: String::from("315188"),
+            name: Some(String::from("315188")),
             category: String::from("B"),
             category_code: None,
-            number: String::from("3"),
+            number: Some(String::from("3")),
             operator: String::from("TPG"),
             to: String::from("Grand-Saconnex, Giacometti"),
             capacity1st: None,
             capacity2nd: None,
             pass_list: vec![Stop {
                 station: Location {
-                    id: String::from("8592899"),
+                    id: Some(String::from("8592899")),
                     name: None,
                     score: None,
                     coordinate: Coordinate {
@@ -383,7 +514,7 @@ mod tests {
                 ),
                 delay: Some(3),
                 platform: Some(String::from("F")),
-                prognosis: Some(prognosis()),
+                prognosis: Some(prognosis_geneva()),
             }],
         };
         let test_data = r#"{
@@ -477,6 +608,130 @@ mod tests {
         }"#;
         let j: Journey = serde_json::from_str(test_data).unwrap();
 
+        assert_eq!(j, expected);
+
+        let expected = Journey {
+            name: Some(String::from("000567")),
+            category: String::from("IC"),
+            category_code: None,
+            number: Some(String::from("3")),
+            operator: String::from("SBB"),
+            to: String::from("Chur"),
+            capacity1st: None,
+            capacity2nd: None,
+            pass_list: vec![Stop {
+                station: Location {
+                    id: Some(String::from("8509000")),
+                    name: None,
+                    score: None,
+                    coordinate: Coordinate {
+                        r#type: String::from("WGS84"),
+                        x: None,
+                        y: None,
+                    },
+                    distance: None,
+                },
+                arrival: None,
+                departure: Some(
+                    DateTime::parse_from_str("2024-04-23T11:38:00+0200", TIME_FORMAT)
+                        .unwrap()
+                        .with_timezone(&Local),
+                ),
+                delay: Some(0),
+                platform: Some(String::from("8")),
+                prognosis: Some(prognosis_zurich()),
+            }],
+        };
+        let test_data = r#"{
+            "stop": {
+                "station": {
+                    "id": "8503000",
+                    "name": "Z\u00fcrich HB",
+                    "score": null,
+                    "coordinate": {
+                        "type": "WGS84",
+                        "x": 47.377847,
+                        "y": 8.540502
+                    },
+                    "distance": null
+                },
+                "arrival": null,
+                "arrivalTimestamp": null,
+                "departure": "2024-04-23T11:38:00+0200",
+                "departureTimestamp": 1713865080,
+                "delay": 0,
+                "platform": "8",
+                "prognosis": {
+                    "platform": null,
+                    "arrival": null,
+                    "departure": "2024-04-23T11:38:00+0200",
+                    "capacity1st": null,
+                    "capacity2nd": null
+                },
+                "realtimeAvailability": null,
+                "location": {
+                    "id": "8509000",
+                    "name": null,
+                    "score": null,
+                    "coordinate": {
+                        "type": "WGS84",
+                        "x": null,
+                        "y": null
+                    },
+                    "distance": null
+                }
+            },
+            "name": "000567",
+            "category": "IC",
+            "subcategory": null,
+            "categoryCode": null,
+            "number": "3",
+            "operator": "SBB",
+            "to": "Chur",
+            "passList": [
+                {
+                    "station": {
+                        "id": "8509000",
+                        "name": null,
+                        "score": null,
+                        "coordinate": {
+                            "type": "WGS84",
+                            "x": null,
+                            "y": null
+                        },
+                        "distance": null
+                    },
+                    "arrival": null,
+                    "arrivalTimestamp": null,
+                    "departure": "2024-04-23T11:38:00+0200",
+                    "departureTimestamp": 1713865080,
+                    "delay": 0,
+                    "platform": "8",
+                    "prognosis": {
+                        "platform": null,
+                        "arrival": null,
+                        "departure": "2024-04-23T11:38:00+0200",
+                        "capacity1st": null,
+                        "capacity2nd": null
+                    },
+                    "realtimeAvailability": null,
+                    "location": {
+                        "id": "8509000",
+                        "name": null,
+                        "score": null,
+                        "coordinate": {
+                            "type": "WGS84",
+                            "x": null,
+                            "y": null
+                        },
+                        "distance": null
+                    }
+                }],
+            "capacity1st": null,
+            "capacity2nd": null
+        }"#;
+        let j: Journey = serde_json::from_str(test_data).unwrap();
+
         assert_eq!(j, expected)
     }
 
@@ -487,13 +742,25 @@ mod tests {
                 .unwrap();
         let reader = BufReader::new(file);
         let s: StationBoardResponse = serde_json::from_reader(reader).unwrap();
-        assert_eq!(s.station.coordinate, coordinate());
-        assert_eq!(s.station, location());
+        assert_eq!(s.station.coordinate, coordinate_geneva());
+        assert_eq!(s.station, location_geneva());
         assert_eq!(
             s.stationboard[0].clone().stop.prognosis.unwrap(),
-            prognosis()
+            prognosis_geneva()
         );
-        assert_eq!(s.stationboard[0].clone().stop, stop());
+        assert_eq!(s.stationboard[0].clone().stop, stop_geneva());
+
+        let file =
+            File::open(Path::new(env!("CARGO_MANIFEST_DIR")).join("zurich_hb_test.json")).unwrap();
+        let reader = BufReader::new(file);
+        let s: StationBoardResponse = serde_json::from_reader(reader).unwrap();
+        assert_eq!(s.station.coordinate, coordinate_zurich());
+        assert_eq!(s.station, location_zurich());
+        assert_eq!(
+            s.stationboard[0].clone().stop.prognosis.unwrap(),
+            prognosis_zurich()
+        );
+        assert_eq!(s.stationboard[0].clone().stop, stop_zurich());
     }
 
     #[test]
