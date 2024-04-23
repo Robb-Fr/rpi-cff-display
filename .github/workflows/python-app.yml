@@ -33,4 +33,4 @@ jobs:
         cd display_controller && ruff check *.py lib/*.py -v
     - name: Test with pytest
       run: |
-        cd display_controller && ls -lah lib/waveshare_epd && python3 -m unittest
+        cd display_controller && python3 -m unittest

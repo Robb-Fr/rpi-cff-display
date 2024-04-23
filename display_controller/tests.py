@@ -1,11 +1,12 @@
 import unittest
 import os
 from lib import create_to_display_image, parse_api_result, font
-from lib.waveshare_epd import epd4in2
 from PIL import Image, ImageChops
 
 TEST_RESULT_FILENAME = "api_result_test.tsv"
 TEST_IMAGE_FILENAME = "test_display.bmp"
+IMAGE_WIDTH = 400
+IMAGE_HEIGHT = 300
 
 test_result_filepath = os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
@@ -31,9 +32,10 @@ class TestDisplayController(unittest.TestCase):
 
     def test_generate_image(self):
         to_display = parse_api_result(test_result_filepath)
-        epd = epd4in2.EPD()
 
-        test_image = create_to_display_image(to_display, epd.width, epd.height, font)
+        test_image = create_to_display_image(
+            to_display, IMAGE_WIDTH, IMAGE_HEIGHT, font
+        )
         with Image.open(test_image_filepath) as expected_image:
             diff = ImageChops.difference(test_image, expected_image)
             self.assertIsNone(diff.getbbox())
