@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-14
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v4
     - name: Build
       run: cd api_fetcher && cp .env.example .env && cargo build --verbose
     - name: Run tests
