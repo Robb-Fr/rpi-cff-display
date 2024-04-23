@@ -3,49 +3,25 @@
 import os
 import logging
 from . import picdir
+from .lib import parse_api_result
 from waveshare_epd import epd4in2
 from PIL import Image, ImageDraw, ImageFont
 
 logging.basicConfig(level=logging.DEBUG)
 
-MAX_DISPLAYED_LINES = 5
 RESULT_FILENAME = "api_result.tsv"
-MAX_NB_COLS = 4
 
 result_filepath = os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
     "api_fetcher",
     RESULT_FILENAME,
 )
-if not os.path.isfile(result_filepath):
-    logging.error(f"could not find the file {result_filepath}")
+
+try:
+    to_display = parse_api_result(result_filepath)
+except (IOError, ValueError) as e:
+    logging.error(e)
     exit(1)
-
-# Open the file and read its content.
-with open(result_filepath) as f:
-    content = f.read().splitlines()
-
-to_display = []
-for line in content[:MAX_DISPLAYED_LINES]:
-    cols = line.split("\t")
-    logging.info(cols)
-    if len(cols) != MAX_NB_COLS:
-        logging.error(f"the file contains {len(cols)} instead of {MAX_NB_COLS}")
-        exit(1)
-    line_direction = cols[1]
-    if len(line_direction) > 8:
-        line_direction = cols[1][:3] + ".." + cols[1][-3:]
-    to_append = (
-        cols[0]
-        + " "
-        + line_direction
-        + " "
-        + cols[2]
-        + ("" if cols[3] == "0" else "+" + cols[3])
-    )
-    logging.info(f"appending {to_append}")
-    to_display.append(to_append)
-
 
 try:
     logging.info("Starting to display the next departures")
