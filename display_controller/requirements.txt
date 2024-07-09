@@ -6,4 +6,4 @@ numpy==1.26.4
 pillow==10.3.0
 RPi.GPIO==0.7.1
 spidev==3.6
-zipp==3.18.1
+zipp==3.19.1
